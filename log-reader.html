@@ -1,0 +1,1834 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log Reader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+/* Design tokens.
+   Edit values here, not in component CSS. */
+
+:root {
+  /* Palette */
+  --color-paper:       #f4f1ea;
+  --color-paper-warm:  #ece7dc;
+  --color-paper-edge:  #e2dccf;
+  --color-ink:         #1a1a18;
+  --color-ink-mid:     #4a4a46;
+  --color-ink-soft:    #7a7872;
+  --color-ink-faint:   #a6a39b;
+  --color-rule:        #1a1a18;
+  --color-rule-soft:   #c8c3b7;
+  --color-accent:      #b71c2c;
+  --color-accent-bg:   rgba(183, 28, 44, 0.08);
+  --color-blue:        #1d3557;
+  --color-ochre:       #a47e3b;
+
+  /* Type */
+  --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
+  --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:  'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Layout */
+  --sidebar-width: 260px;
+  --content-padding: 40px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+input {
+  font-family: inherit;
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-ink-soft);
+  border: 1px solid var(--color-rule-soft);
+  padding: 1px 5px;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-paper);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-rule-soft);
+  border: 3px solid var(--color-paper);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-soft);
+}
+
+/* App shell */
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Header */
+.header {
+  border-bottom: 3px double var(--color-rule);
+  padding: 22px var(--content-padding) 14px;
+}
+
+.header__top {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+  gap: var(--space-6);
+}
+
+.header__id {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ink-mid);
+}
+
+.header__id-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  margin-right: var(--space-2);
+  vertical-align: 2px;
+}
+
+.header__title {
+  font-family: var(--font-serif);
+  font-size: 38px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.header__title-mark {
+  color: var(--color-accent);
+}
+
+.header__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.header__meta {
+  margin-top: 14px;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+.header__meta-center {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--color-ink-mid);
+}
+
+/* Body grid */
+.body {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  border-right: 1px solid var(--color-rule);
+  overflow-y: auto;
+  padding: 28px 28px 60px;
+}
+
+.sidebar__section {
+  margin-bottom: 30px;
+}
+
+.sidebar__heading {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--color-rule);
+  padding-bottom: 6px;
+}
+
+/* Main */
+.main {
+  overflow-y: auto;
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-paper);
+  border-bottom: 1px solid var(--color-rule);
+  padding: 16px var(--content-padding);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: center;
+}
+
+/* ─── Button ─── */
+.button {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 7px 12px;
+  background: transparent;
+  color: var(--color-ink);
+  border: 1px solid var(--color-rule);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.button:hover {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.button--primary {
+  background: var(--color-accent);
+  color: var(--color-paper);
+  border-color: var(--color-accent);
+}
+
+.button--primary:hover {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+.button--link {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-ink);
+  padding: 4px 0;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.button--link:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* ─── Search ─── */
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border-bottom: 1.5px solid var(--color-ink);
+  padding: 6px 2px 6px 0;
+  transition: border-color 0.15s;
+}
+
+.search:focus-within {
+  border-color: var(--color-accent);
+}
+
+.search__icon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-ink-mid);
+  flex-shrink: 0;
+}
+
+.search__input {
+  background: none;
+  border: 0;
+  outline: 0;
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  flex: 1;
+  width: 100%;
+  letter-spacing: -0.01em;
+}
+
+.search__input::placeholder {
+  color: var(--color-ink-faint);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+/* ─── Segmented control ─── */
+.segment {
+  display: inline-flex;
+  border: 1px solid var(--color-rule);
+}
+
+.segment__btn {
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--color-rule);
+  color: var(--color-ink-mid);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+
+.segment__btn:last-child {
+  border-right: 0;
+}
+
+.segment__btn:hover {
+  color: var(--color-ink);
+  background: var(--color-paper-warm);
+}
+
+.segment__btn.is-active {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+/* ─── Summary block (sidebar lede) ─── */
+.summary__number {
+  font-family: var(--font-serif);
+  font-size: 56px;
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+}
+
+.summary__label {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-ink-mid);
+  margin-top: var(--space-1);
+}
+
+.summary__range {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-ink-soft);
+  margin-top: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Level list ─── */
+.level {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  padding: 7px var(--space-2);
+  margin: 0 calc(-1 * var(--space-2));
+  cursor: pointer;
+  border-bottom: 1px dotted var(--color-rule-soft);
+  align-items: baseline;
+  transition: background 0.1s;
+}
+
+.level:last-child {
+  border-bottom: 0;
+}
+
+.level:hover,
+.level.is-active {
+  background: var(--color-paper-warm);
+}
+
+.level.is-active .level__name::before {
+  content: '› ';
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.level__tick {
+  width: 4px;
+  height: 12px;
+  margin-right: 10px;
+  align-self: center;
+  background: var(--color-ink);
+}
+
+.level__tick--error,
+.level__tick--critical,
+.level__tick--alert,
+.level__tick--emergency {
+  background: var(--color-accent);
+}
+
+.level__tick--warning {
+  background: var(--color-ochre);
+}
+
+.level__tick--info,
+.level__tick--notice {
+  background: var(--color-blue);
+}
+
+.level__tick--debug {
+  background: var(--color-ink-faint);
+}
+
+.level__name {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+}
+
+.level__count {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-mid);
+}
+
+/* ─── Hour histogram ─── */
+.histogram {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 52px;
+  margin-top: var(--space-2);
+  border-bottom: 1px solid var(--color-rule);
+  padding-bottom: 2px;
+}
+
+.histogram__bar {
+  flex: 1;
+  min-height: 1px;
+  background: var(--color-ink);
+  transition: background 0.1s;
+}
+
+.histogram__bar--error {
+  background: var(--color-accent);
+}
+
+.histogram__bar:hover {
+  background: var(--color-accent);
+}
+
+.histogram__axis {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-ink-soft);
+  margin-top: var(--space-1);
+  letter-spacing: 0.06em;
+}
+
+/* ─── File list ─── */
+.file {
+  border-top: 1px solid var(--color-rule-soft);
+  padding: 9px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.file:first-child {
+  border-top: 0;
+}
+
+.file__name {
+  color: var(--color-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.file__count {
+  color: var(--color-ink-soft);
+  padding: 0 var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.file__remove {
+  color: var(--color-ink-faint);
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.file__remove:hover {
+  color: var(--color-accent);
+}
+
+/* ─── Empty state ─── */
+.empty {
+  padding: 80px 60px 60px;
+  max-width: 760px;
+}
+
+.empty__kicker {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  border-top: 1px solid var(--color-accent);
+  padding: 14px 60px 0 0;
+  margin-bottom: 18px;
+  display: inline-block;
+}
+
+.empty__title {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 48px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: 18px;
+}
+
+.empty__title-mark {
+  color: var(--color-accent);
+}
+
+.empty__deck {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--color-ink-mid);
+  max-width: 580px;
+  margin-bottom: 36px;
+  border-left: 3px solid var(--color-accent);
+  padding-left: 18px;
+}
+
+.empty__drop {
+  display: block;
+  border: 1px dashed var(--color-ink);
+  padding: 28px 38px;
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.empty__drop:hover,
+.empty__drop.is-over {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.empty__footer {
+  margin-top: 28px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-rule-soft);
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+/* ─── Article list ─── */
+.articles {
+  padding: 0 var(--content-padding) 80px;
+}
+
+.article {
+  border-bottom: 1px solid var(--color-rule);
+  padding: 22px 0;
+}
+
+.article:first-child {
+  padding-top: 18px;
+}
+
+.article__head {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 28px;
+  align-items: baseline;
+  cursor: pointer;
+}
+
+.article__cat {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  border-top: 2px solid var(--color-ink);
+  padding-top: 6px;
+  line-height: 1.5;
+}
+
+.article__cat--error,
+.article__cat--critical,
+.article__cat--alert,
+.article__cat--emergency {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.article__cat--warning {
+  color: var(--color-ochre);
+  border-color: var(--color-ochre);
+}
+
+.article__cat--info,
+.article__cat--notice {
+  color: var(--color-blue);
+  border-color: var(--color-blue);
+}
+
+.article__cat--debug {
+  color: var(--color-ink-soft);
+  border-color: var(--color-ink-soft);
+}
+
+.article__occurrences {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-ink-mid);
+  margin-top: 2px;
+}
+
+.article__headline {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 21px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+  transition: color 0.12s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.article__head:hover .article__headline,
+.article.is-open .article__headline {
+  color: var(--color-accent);
+}
+
+.article__headline mark {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  padding: 0 2px;
+}
+
+.article__meta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.article__body {
+  display: none;
+  padding: 18px 0 6px 124px;
+}
+
+.article.is-open .article__body {
+  display: block;
+}
+
+/* ─── Entry (individual log line) ─── */
+.entry {
+  border-top: 1px dotted var(--color-rule-soft);
+  padding: 14px 0;
+}
+
+.entry:first-child {
+  border-top: 0;
+  padding-top: var(--space-1);
+}
+
+.entry__stamp {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-ink-soft);
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  display: flex;
+  gap: 14px;
+}
+
+.entry__file {
+  color: var(--color-ink-mid);
+}
+
+.entry__message {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--color-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.entry__message mark,
+.entry__exception mark {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  padding: 0 2px;
+}
+
+.entry__exception {
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--color-ink-mid);
+  margin-top: 10px;
+  padding-left: 14px;
+  border-left: 2px solid var(--color-accent);
+}
+
+.entry__toggle {
+  margin-top: var(--space-3);
+}
+
+.entry__stack {
+  display: none;
+  margin-top: var(--space-3);
+  padding: var(--space-4) 18px;
+  background: var(--color-paper-warm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.85;
+  color: var(--color-ink-mid);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 460px;
+  overflow-y: auto;
+  border-left: 2px solid var(--color-ink);
+}
+
+.entry__stack.is-open {
+  display: block;
+}
+
+.entry__frame-num {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.entry__frame-path {
+  color: var(--color-blue);
+}
+
+.entry__more {
+  margin-top: 14px;
+}
+
+/* ─── No-match state ─── */
+.no-match {
+  padding: 100px var(--content-padding);
+  text-align: center;
+}
+
+.no-match__title {
+  font-family: var(--font-serif);
+  font-size: 32px;
+  color: var(--color-accent);
+  margin-bottom: 10px;
+}
+
+.no-match__hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+/* ─── Overlays ─── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(244, 241, 234, 0.92);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.overlay.is-open {
+  display: flex;
+}
+
+.overlay__card {
+  background: var(--color-paper);
+  border: 1px solid var(--color-ink);
+  padding: 32px 44px;
+  min-width: 280px;
+  text-align: center;
+}
+
+.overlay__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: var(--space-2);
+}
+
+.overlay__message {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  color: var(--color-ink);
+}
+
+.drag-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(183, 28, 44, 0.06);
+}
+
+.drag-overlay.is-open {
+  display: flex;
+}
+
+.drag-overlay__panel {
+  background: var(--color-paper);
+  border: 2px dashed var(--color-accent);
+  padding: 70px 110px;
+  text-align: center;
+}
+
+.drag-overlay__title {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 32px;
+  color: var(--color-accent);
+  margin-bottom: 6px;
+}
+
+.drag-overlay__hint {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+}
+
+/* ─── Utilities ─── */
+.is-hidden {
+  display: none !important;
+}
+
+
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <header class="header">
+      <div class="header__top">
+        <p class="header__id"><span class="header__id-dot"></span>Log Reader</p>
+        <h1 class="header__title">Laravel <span class="header__title-mark">Logs</span></h1>
+        <div class="header__actions">
+          <button class="button is-hidden" id="collapse-all">Collapse</button>
+          <button class="button is-hidden" id="expand-all">Expand</button>
+          <label class="button button--primary" for="file-input">Open file</label>
+          <input type="file" id="file-input" accept=".log,.txt,text/plain" multiple hidden>
+        </div>
+      </div>
+      <div class="header__meta">
+        <span id="header-left">— · — · —</span>
+        <span class="header__meta-center" id="header-center">No file loaded</span>
+        <span id="header-right">Offline · no upload</span>
+      </div>
+    </header>
+
+    <div class="body">
+
+      <aside class="sidebar">
+        <section class="sidebar__section">
+          <h2 class="sidebar__heading">Summary</h2>
+          <p class="summary__number" id="summary-number">0</p>
+          <p class="summary__label">Entries recorded</p>
+          <p class="summary__range" id="summary-range">No data</p>
+        </section>
+
+        <section class="sidebar__section">
+          <h2 class="sidebar__heading">By level</h2>
+          <div id="level-list">
+            <p>No entries yet</p>
+          </div>
+        </section>
+
+        <section class="sidebar__section is-hidden" id="histogram-wrap">
+          <h2 class="sidebar__heading">By hour</h2>
+          <div class="histogram" id="histogram"></div>
+          <div class="histogram__axis">
+            <span>00</span><span>06</span><span>12</span><span>18</span><span>23</span>
+          </div>
+        </section>
+
+        <section class="sidebar__section is-hidden" id="files-wrap">
+          <h2 class="sidebar__heading">Sources</h2>
+          <div id="file-list"></div>
+        </section>
+      </aside>
+
+      <main class="main">
+
+        <section class="empty" id="empty">
+          <p class="empty__kicker">Get started</p>
+          <h2 class="empty__title">Read your Laravel <span class="empty__title-mark">logs</span> clearly.</h2>
+          <p class="empty__deck">
+            Load one or more log files. Entries are parsed, grouped by signature,
+            and laid out for reading. Files stay in the browser — nothing is uploaded.
+          </p>
+          <label class="empty__drop" for="file-input">
+            Choose files, or drag them anywhere
+          </label>
+          <div class="empty__footer">
+            <span>Supports laravel.log and laravel-YYYY-MM-DD.log</span>
+            <span>Press <kbd>/</kbd> to search</span>
+          </div>
+        </section>
+
+        <section class="is-hidden" id="content">
+          <div class="toolbar">
+            <div class="search">
+              <svg class="search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input
+                class="search__input"
+                id="search-input"
+                type="text"
+                placeholder="Search messages, stack traces, files…"
+                autocomplete="off"
+                spellcheck="false">
+              <kbd>/</kbd>
+            </div>
+            <div class="segment" id="group-toggle">
+              <button class="segment__btn is-active" data-mode="grouped">Grouped</button>
+              <button class="segment__btn" data-mode="flat">Chronological</button>
+            </div>
+          </div>
+          <div class="articles" id="articles"></div>
+        </section>
+
+      </main>
+
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay__card">
+      <p class="overlay__label">Working</p>
+      <p class="overlay__message" id="overlay-message">Reading file…</p>
+    </div>
+  </div>
+
+  <div class="drag-overlay" id="drag-overlay">
+    <div class="drag-overlay__panel">
+      <p class="drag-overlay__title">Drop to load</p>
+      <p class="drag-overlay__hint">Release the file anywhere</p>
+    </div>
+  </div>
+
+  <script>
+(function () {
+// ─────── js/parser.js ───────
+/**
+ * Laravel log parser.
+ *
+ * Input:  raw text from a laravel-YYYY-MM-DD.log file
+ * Output: array of { ts, env, level, message, exception, stack, file }
+ */
+
+const HEADER_RE = /^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?)\]\s+([\w-]+)\.([A-Z]+):\s*(.*)$/;
+
+function parseLog(text, fileName) {
+  const lines = text.split(/\r?\n/);
+  const entries = [];
+  let current = null;
+
+  for (const line of lines) {
+    const m = line.match(HEADER_RE);
+    if (m) {
+      if (current) entries.push(finalize(current));
+      current = {
+        ts: m[1],
+        env: m[2],
+        level: m[3].toLowerCase(),
+        firstLine: m[4],
+        bodyLines: [],
+        file: fileName,
+      };
+    } else if (current) {
+      current.bodyLines.push(line);
+    }
+  }
+  if (current) entries.push(finalize(current));
+  return entries;
+}
+
+function finalize(raw) {
+  const { ts, env, level, firstLine, bodyLines, file } = raw;
+  const message = extractMessage(firstLine);
+  const exception = extractException(firstLine, bodyLines);
+  const stack = extractStack(bodyLines);
+  return { ts, env, level, message, exception, stack, file };
+}
+
+function extractMessage(firstLine) {
+  // Laravel format: "<readable message> {"exception":"...JSON...}"
+  // We only want the readable part.
+  const jsonStart = firstLine.indexOf('{"exception"');
+  return jsonStart >= 0 ? firstLine.slice(0, jsonStart).trim() : firstLine;
+}
+
+function extractException(firstLine, bodyLines) {
+  if (firstLine.indexOf('{"exception"') < 0) return null;
+
+  // The exception payload spans multiple physical lines and contains
+  // literal newlines, so JSON.parse won't work. Extract via regex.
+  const joined = firstLine + '\n' + bodyLines.join('\n');
+
+  // Strict pattern: [object] (ClassName(code: N): summary at path:line)\n[stacktrace]
+  const strict = joined.match(
+    /\[object\]\s*\(([\w\\\\]+)\(code:\s*(\d+)\):\s*([\s\S]*?)\)(?=\s*(?:\\n)?\[stacktrace\])/
+  );
+  if (strict) {
+    const cls = strict[1].replace(/\\\\/g, '\\');
+    const summary = strict[3].replace(/\\\\/g, '\\').trim();
+    return `${cls}  ·  ${summary}`;
+  }
+
+  // Loose fallback: just the (...) parens
+  const loose = joined.match(/\[object\]\s*\(([\w\\\\]+)\(code:\s*(\d+)\):\s*([^)]+)/);
+  if (loose) {
+    return `${loose[1].replace(/\\\\/g, '\\')}  ·  ${loose[3].replace(/\\\\/g, '\\').trim()}`;
+  }
+  return null;
+}
+
+function extractStack(bodyLines) {
+  // Find either [stacktrace] marker or the first "#N " frame line.
+  for (let i = 0; i < bodyLines.length; i++) {
+    if (/^\[stacktrace\]\s*$/.test(bodyLines[i])) {
+      return collectFrames(bodyLines, i + 1);
+    }
+    if (/^#\d+\s/.test(bodyLines[i])) {
+      return collectFrames(bodyLines, i);
+    }
+  }
+  return null;
+}
+
+function collectFrames(lines, startIdx) {
+  const frames = [];
+  for (let i = startIdx; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^#\d+\s/.test(line)) {
+      frames.push(line);
+      if (/\{main\}/.test(line)) break;
+    } else if (line.trim() === '' || line.startsWith('[previous exception]')) {
+      break;
+    } else if (frames.length) {
+      // Continuation of previous frame
+      frames[frames.length - 1] += ' ' + line;
+    }
+  }
+  return frames.length ? frames.join('\n') : null;
+}
+
+// ─────── js/grouping.js ───────
+/**
+ * Group entries by message signature so that 23 identical "JWT missing token"
+ * lines collapse into one entry with count=23.
+ */
+
+function buildGroups(entries) {
+  const map = new Map();
+
+  for (const entry of entries) {
+    const key = entry.level + '::' + fingerprint(entry.message);
+    let group = map.get(key);
+
+    if (!group) {
+      group = {
+        key,
+        level: entry.level,
+        message: entry.message,
+        count: 0,
+        entries: [],
+        firstTs: entry.ts,
+        lastTs: entry.ts,
+      };
+      map.set(key, group);
+    }
+
+    group.count++;
+    group.entries.push(entry);
+    if (entry.ts < group.firstTs) group.firstTs = entry.ts;
+    if (entry.ts > group.lastTs) group.lastTs = entry.ts;
+  }
+
+  return [...map.values()].sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return b.lastTs.localeCompare(a.lastTs);
+  });
+}
+
+/**
+ * Reduce a message to a normalized signature.
+ * Identical errors with different IDs, paths, or hashes share a fingerprint.
+ */
+function fingerprint(message) {
+  return message
+    .slice(0, 400)
+    .replace(/\b\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(\.\d+)?)?\b/g, '<DATE>')
+    .replace(/\b[0-9a-f]{32,}\b/gi, '<HASH>')
+    .replace(/\b\d+\b/g, '<N>')
+    .replace(/[A-Z]:\\[^\s"',)]+/g, '<PATH>')
+    .replace(/\/[\w./-]{3,}/g, '<PATH>')
+    .replace(/https?:\/\/[^\s"',)]+/g, '<URL>')
+    .replace(/"[^"]{4,}"/g, '"<STR>"')
+    .replace(/'[^']{4,}'/g, "'<STR>'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// ─────── js/search.js ───────
+/**
+ * Search utilities.
+ * Query syntax: plain text (case-insensitive substring), or /regex/flags.
+ */
+
+function compileQuery(query) {
+  if (!query) return null;
+
+  // /pattern/flags syntax for regex queries
+  const regexMatch = query.match(/^\/(.+)\/([gimsuy]*)$/);
+  if (regexMatch) {
+    try {
+      const flags = regexMatch[2].includes('i') ? regexMatch[2] : regexMatch[2] + 'i';
+      return new RegExp(regexMatch[1], flags);
+    } catch {
+      // Invalid regex — fall through to literal match
+    }
+  }
+
+  // Plain text: escape regex metacharacters
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\<script type="module" src="js/app.js"></script>');
+  return new RegExp(escaped, 'i');
+}
+
+function matchesEntry(entry, regex) {
+  if (!regex) return true;
+  if (regex.test(entry.message)) return true;
+  if (entry.exception && regex.test(entry.exception)) return true;
+  if (entry.stack && regex.test(entry.stack)) return true;
+  return false;
+}
+
+function escapeHtml(value) {
+  if (value == null) return '';
+  return String(value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]));
+}
+
+function highlight(text, regex) {
+  const escaped = escapeHtml(text);
+  if (!regex) return escaped;
+  return escaped.replace(regex, match => `<mark>${match}</mark>`);
+}
+
+/**
+ * Adds syntax color spans to a stack trace.
+ * Doesn't apply search highlight — frame markup would conflict.
+ */
+function formatStackTrace(stack) {
+  if (!stack) return '';
+  let html = escapeHtml(stack);
+  html = html.replace(/^(#\d+)/gm, '<span class="entry__frame-num">$1</span>');
+  html = html.replace(
+    /([A-Z]:\\[^\s:]+|\/[\w./-]+\.php)(?=[(:])/g,
+    '<span class="entry__frame-path">$1</span>'
+  );
+  return html;
+}
+
+// ─────── js/state.js ───────
+/**
+ * Single state object with a subscribe/notify pattern.
+ * Keeps render code from reaching back into mutable globals.
+ */
+
+const listeners = new Set();
+
+const state = {
+  files: [],                     // [{ name, count }]
+  entries: [],                   // parsed log entries
+  mode: 'grouped',               // 'grouped' | 'flat'
+  query: '',
+  activeLevel: null,             // string or null
+  expandedGroups: new Set(),     // group keys currently expanded
+  visibleByGroup: new Map(),     // group key -> entry count to show
+};
+
+function subscribe(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+function notify() {
+  for (const fn of listeners) fn();
+}
+
+function setQuery(query) {
+  state.query = query;
+  state.visibleByGroup.clear();
+  notify();
+}
+
+function setMode(mode) {
+  state.mode = mode;
+  state.visibleByGroup.clear();
+  notify();
+}
+
+function toggleLevel(level) {
+  state.activeLevel = state.activeLevel === level ? null : level;
+  notify();
+}
+
+function clearLevel() {
+  state.activeLevel = null;
+  notify();
+}
+
+function toggleGroup(key) {
+  if (state.expandedGroups.has(key)) {
+    state.expandedGroups.delete(key);
+  } else {
+    state.expandedGroups.add(key);
+  }
+  notify();
+}
+
+function collapseAll() {
+  state.expandedGroups.clear();
+  notify();
+}
+
+function expandAll(keys) {
+  for (const k of keys) state.expandedGroups.add(k);
+  notify();
+}
+
+function showMore(key, increment) {
+  const current = state.visibleByGroup.get(key) || 0;
+  state.visibleByGroup.set(key, current + increment);
+  notify();
+}
+
+function addFile({ name, entries }) {
+  // Replace any prior version of this file
+  const idx = state.files.findIndex(f => f.name === name);
+  if (idx >= 0) {
+    state.entries = state.entries.filter(e => e.file !== name);
+    state.files.splice(idx, 1);
+  }
+  state.entries.push(...entries);
+  state.files.push({ name, count: entries.length });
+  state.entries.sort((a, b) => a.ts.localeCompare(b.ts));
+  state.visibleByGroup.clear();
+  notify();
+}
+
+function removeFile(name) {
+  state.entries = state.entries.filter(e => e.file !== name);
+  state.files = state.files.filter(f => f.name !== name);
+  state.visibleByGroup.clear();
+  notify();
+}
+
+// ─────── js/render.js ───────
+/**
+ * Rendering. Reads from state, writes to DOM. No event handlers here —
+ * those live in app.js. All event hooks are exposed via data-* attributes
+ * and resolved by the controller.
+ */
+
+
+
+
+const DEFAULT_VISIBLE_PER_GROUP = 5;
+const SHOW_MORE_INCREMENT = 50;
+const SEVERE_LEVELS = new Set(['error', 'critical', 'alert', 'emergency']);
+const LEVEL_ORDER = ['emergency', 'alert', 'critical', 'error', 'warning', 'notice', 'info', 'debug'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const dom = {
+  headerLeft:   document.getElementById('header-left'),
+  headerCenter: document.getElementById('header-center'),
+  headerRight:  document.getElementById('header-right'),
+  expandBtn:    document.getElementById('expand-all'),
+  collapseBtn:  document.getElementById('collapse-all'),
+
+  summaryNumber: document.getElementById('summary-number'),
+  summaryRange:  document.getElementById('summary-range'),
+  levelList:     document.getElementById('level-list'),
+  histogramWrap: document.getElementById('histogram-wrap'),
+  histogram:     document.getElementById('histogram'),
+  filesWrap:     document.getElementById('files-wrap'),
+  fileList:      document.getElementById('file-list'),
+
+  empty:    document.getElementById('empty'),
+  content:  document.getElementById('content'),
+  groupToggle: document.getElementById('group-toggle'),
+  articles: document.getElementById('articles'),
+};
+
+function render() {
+  renderSidebar();
+
+  if (!state.entries.length) {
+    dom.empty.classList.remove('is-hidden');
+    dom.content.classList.add('is-hidden');
+    dom.expandBtn.classList.add('is-hidden');
+    dom.collapseBtn.classList.add('is-hidden');
+    dom.headerCenter.textContent = 'No file loaded';
+    return;
+  }
+
+  dom.empty.classList.add('is-hidden');
+  dom.content.classList.remove('is-hidden');
+  dom.expandBtn.classList.remove('is-hidden');
+  dom.collapseBtn.classList.remove('is-hidden');
+  dom.headerCenter.textContent = state.files.map(f => f.name).join(' · ');
+
+  // Mode segmented control
+  for (const btn of dom.groupToggle.querySelectorAll('.segment__btn')) {
+    btn.classList.toggle('is-active', btn.dataset.mode === state.mode);
+  }
+
+  renderArticles();
+}
+
+/* ─────────────────────────── Sidebar ─────────────────────────── */
+
+function renderSidebar() {
+  // Total count
+  dom.summaryNumber.textContent = state.entries.length.toLocaleString();
+
+  if (state.entries.length) {
+    const first = state.entries[0];
+    const last  = state.entries[state.entries.length - 1];
+    dom.summaryRange.textContent = `${formatDate(first.ts)} → ${formatDate(last.ts)}`;
+    dom.headerLeft.textContent =
+      `${state.files.length} source${state.files.length === 1 ? '' : 's'} · ${state.entries.length.toLocaleString()} entries`;
+    dom.headerRight.textContent = `${formatDate(last.ts)} last`;
+  } else {
+    dom.summaryRange.textContent = 'No data';
+    dom.headerLeft.textContent = '— · — · —';
+    dom.headerRight.textContent = 'Offline · no upload';
+  }
+
+  renderLevelList();
+  renderHistogram();
+  renderFileList();
+}
+
+function renderLevelList() {
+  dom.levelList.innerHTML = '';
+
+  if (!state.entries.length) {
+    dom.levelList.innerHTML = `<p style="font-family: var(--font-sans); color: var(--color-ink-soft); padding: 6px 0; font-size: 13px;">No entries yet</p>`;
+    return;
+  }
+
+  const counts = countByLevel(state.entries);
+  const orderedLevels = LEVEL_ORDER.filter(l => counts[l]);
+
+  // "All" row
+  dom.levelList.appendChild(
+    createLevelRow('all', 'All entries', state.entries.length, state.activeLevel === null)
+  );
+
+  // One row per level
+  for (const level of orderedLevels) {
+    dom.levelList.appendChild(
+      createLevelRow(level, level, counts[level], state.activeLevel === level)
+    );
+  }
+}
+
+function createLevelRow(level, label, count, isActive) {
+  const row = document.createElement('div');
+  row.className = 'level' + (isActive ? ' is-active' : '');
+  row.dataset.level = level === 'all' ? '' : level;
+  row.innerHTML = `
+    <span class="level__tick level__tick--${level}"></span>
+    <span class="level__name">${escapeHtml(label)}</span>
+    <span class="level__count">${count.toLocaleString()}</span>
+  `;
+  row.addEventListener('click', () => {
+    toggleLevel(level === 'all' ? null : level);
+  });
+  return row;
+}
+
+function countByLevel(entries) {
+  const counts = {};
+  for (const e of entries) counts[e.level] = (counts[e.level] || 0) + 1;
+  return counts;
+}
+
+function renderHistogram() {
+  if (!state.entries.length) {
+    dom.histogramWrap.classList.add('is-hidden');
+    return;
+  }
+  dom.histogramWrap.classList.remove('is-hidden');
+
+  const totals = new Array(24).fill(0);
+  const severe = new Array(24).fill(0);
+
+  for (const entry of state.entries) {
+    const hour = parseInt(entry.ts.slice(11, 13), 10);
+    if (hour >= 0 && hour < 24) {
+      totals[hour]++;
+      if (SEVERE_LEVELS.has(entry.level)) severe[hour]++;
+    }
+  }
+
+  const max = Math.max(...totals, 1);
+  dom.histogram.innerHTML = '';
+  for (let hour = 0; hour < 24; hour++) {
+    const bar = document.createElement('div');
+    bar.className = 'histogram__bar' + (severe[hour] > totals[hour] / 2 ? ' histogram__bar--error' : '');
+    bar.style.height = `${1 + (totals[hour] / max) * 50}px`;
+    bar.title = `${String(hour).padStart(2, '0')}:00 — ${totals[hour]} entries (${severe[hour]} severe)`;
+    dom.histogram.appendChild(bar);
+  }
+}
+
+function renderFileList() {
+  if (!state.files.length) {
+    dom.filesWrap.classList.add('is-hidden');
+    return;
+  }
+  dom.filesWrap.classList.remove('is-hidden');
+  dom.fileList.innerHTML = '';
+
+  for (const file of state.files) {
+    const row = document.createElement('div');
+    row.className = 'file';
+    row.innerHTML = `
+      <span class="file__name">${escapeHtml(file.name)}</span>
+      <span class="file__count">${file.count.toLocaleString()}</span>
+      <span class="file__remove" title="Remove file">✕</span>
+    `;
+    row.querySelector('.file__remove').addEventListener('click', event => {
+      event.stopPropagation();
+      removeFile(file.name);
+    });
+    dom.fileList.appendChild(row);
+  }
+}
+
+/* ─────────────────────────── Articles ─────────────────────────── */
+
+function renderArticles() {
+  const regex = compileQuery(state.query);
+  let filtered = state.entries;
+
+  if (state.activeLevel) {
+    filtered = filtered.filter(e => e.level === state.activeLevel);
+  }
+  if (regex) {
+    filtered = filtered.filter(e => matchesEntry(e, regex));
+  }
+
+  dom.articles.innerHTML = '';
+
+  if (!filtered.length) {
+    dom.articles.innerHTML = `
+      <div class="no-match">
+        <p class="no-match__title">No matches</p>
+        <p class="no-match__hint">Refine the query or clear the level filter</p>
+      </div>
+    `;
+    return;
+  }
+
+  const groups = state.mode === 'grouped'
+    ? buildGroups(filtered)
+    : asFlatGroups(filtered);
+
+  for (const group of groups) {
+    dom.articles.appendChild(renderArticle(group, regex));
+  }
+}
+
+function asFlatGroups(entries) {
+  return [...entries]
+    .sort((a, b) => b.ts.localeCompare(a.ts))
+    .map((entry, idx) => ({
+      key: `flat::${entry.ts}::${idx}`,
+      level: entry.level,
+      message: entry.message,
+      count: 1,
+      entries: [entry],
+      firstTs: entry.ts,
+      lastTs: entry.ts,
+      isFlat: true,
+    }));
+}
+
+function renderArticle(group, regex) {
+  const article = document.createElement('article');
+  article.className = 'article';
+  if (group.isFlat || state.expandedGroups.has(group.key)) {
+    article.classList.add('is-open');
+  }
+
+  const head = document.createElement('div');
+  head.className = 'article__head';
+  head.innerHTML = `
+    <div class="article__cat article__cat--${group.level}">
+      ${escapeHtml(group.level)}
+      ${group.isFlat ? '' : `<span class="article__occurrences">${group.count} occurrence${group.count === 1 ? '' : 's'}</span>`}
+    </div>
+    <h3 class="article__headline">${highlight(group.message.split('\n')[0], regex)}</h3>
+    <div class="article__meta">${formatRange(group.firstTs, group.lastTs)}</div>
+  `;
+
+  head.addEventListener('click', () => {
+    if (group.isFlat) return;
+    toggleGroup(group.key);
+  });
+
+  const body = renderArticleBody(group, regex);
+
+  article.appendChild(head);
+  article.appendChild(body);
+  return article;
+}
+
+function renderArticleBody(group, regex) {
+  const body = document.createElement('div');
+  body.className = 'article__body';
+
+  const sortedEntries = [...group.entries].sort((a, b) => b.ts.localeCompare(a.ts));
+  const visibleCount = state.visibleByGroup.get(group.key)
+    || (group.isFlat ? 1 : DEFAULT_VISIBLE_PER_GROUP);
+  const slice = sortedEntries.slice(0, visibleCount);
+
+  for (const entry of slice) {
+    body.appendChild(renderEntry(entry, regex));
+  }
+
+  const remaining = sortedEntries.length - visibleCount;
+  if (remaining > 0) {
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'button button--link entry__more';
+    const willShow = Math.min(remaining, SHOW_MORE_INCREMENT);
+    moreBtn.textContent = `Show ${willShow} more — ${remaining.toLocaleString()} remaining`;
+    moreBtn.addEventListener('click', () => showMore(group.key, willShow));
+    body.appendChild(moreBtn);
+  }
+
+  return body;
+}
+
+function renderEntry(entry, regex) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'entry';
+
+  const showFile = state.files.length > 1;
+  const fileTag = showFile ? `<span class="entry__file">${escapeHtml(entry.file)}</span>` : '';
+  const excBlock = entry.exception ? `<p class="entry__exception">${highlight(entry.exception, regex)}</p>` : '';
+  const stackBlock = entry.stack ? renderStackBlock(entry.stack) : '';
+
+  wrapper.innerHTML = `
+    <div class="entry__stamp">
+      <span>${escapeHtml(entry.ts)}</span>
+      <span>${escapeHtml(entry.env)}.${escapeHtml(entry.level)}</span>
+      ${fileTag}
+    </div>
+    <div class="entry__message">${highlight(entry.message, regex)}</div>
+    ${excBlock}
+    ${stackBlock}
+  `;
+
+  if (entry.stack) wireStackToggle(wrapper, entry.stack);
+  return wrapper;
+}
+
+function renderStackBlock(stack) {
+  const frameCount = stack.split('\n').length;
+  return `
+    <button class="button button--link entry__toggle">↳  Stack trace · ${frameCount} frames</button>
+    <pre class="entry__stack">${formatStackTrace(stack)}</pre>
+  `;
+}
+
+function wireStackToggle(wrapper, stack) {
+  const button = wrapper.querySelector('.entry__toggle');
+  const pre = wrapper.querySelector('.entry__stack');
+  const frameCount = stack.split('\n').length;
+
+  button.addEventListener('click', () => {
+    const isOpen = pre.classList.toggle('is-open');
+    button.textContent = isOpen
+      ? `↑  Hide stack trace`
+      : `↳  Stack trace · ${frameCount} frames`;
+  });
+}
+
+/* ─────────────────────────── Formatting helpers ─────────────────────────── */
+
+function formatDate(ts) {
+  if (!ts) return '';
+  const month = parseInt(ts.slice(5, 7), 10);
+  return `${MONTHS[month - 1]} ${ts.slice(8, 10)} · ${ts.slice(11, 16)}`;
+}
+
+function formatRange(first, last) {
+  if (first === last) return formatDate(last);
+  return `${formatDate(first)} – ${formatDate(last)}`;
+}
+
+/* ─────────────────────────── Public hooks ─────────────────────────── */
+
+function getCurrentGroupKeys() {
+  // Used by app.js for "Expand all"
+  const regex = compileQuery(state.query);
+  let filtered = state.entries;
+  if (state.activeLevel) filtered = filtered.filter(e => e.level === state.activeLevel);
+  if (regex) filtered = filtered.filter(e => matchesEntry(e, regex));
+  return buildGroups(filtered).map(g => g.key);
+}
+
+// ─────── js/app.js ───────
+/**
+ * Entry point. Wires events, handles file I/O, kicks off the first render.
+ */
+
+
+
+
+const els = {
+  fileInput:    document.getElementById('file-input'),
+  searchInput:  document.getElementById('search-input'),
+  groupToggle:  document.getElementById('group-toggle'),
+  expandBtn:    document.getElementById('expand-all'),
+  collapseBtn:  document.getElementById('collapse-all'),
+  overlay:      document.getElementById('overlay'),
+  overlayMsg:   document.getElementById('overlay-message'),
+  dragOverlay:  document.getElementById('drag-overlay'),
+};
+
+/* ─── Render on every state change ─── */
+subscribe(render);
+
+/* ─── File loading ─── */
+els.fileInput.addEventListener('change', async event => {
+  await loadFiles(event.target.files);
+  event.target.value = '';
+});
+
+async function loadFiles(fileList) {
+  if (!fileList || !fileList.length) return;
+
+  showOverlay(`Reading ${fileList.length} file${fileList.length > 1 ? 's' : ''}…`);
+  // Let the overlay paint before parsing blocks the thread
+  await nextFrame();
+
+  for (const file of fileList) {
+    showOverlay(`Parsing ${file.name}…`);
+    await nextFrame();
+    const text = await file.text();
+    const entries = parseLog(text, file.name);
+    addFile({ name: file.name, entries });
+  }
+
+  hideOverlay();
+}
+
+function showOverlay(message) {
+  els.overlayMsg.textContent = message;
+  els.overlay.classList.add('is-open');
+}
+
+function hideOverlay() {
+  els.overlay.classList.remove('is-open');
+}
+
+function nextFrame() {
+  return new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+}
+
+/* ─── Search ─── */
+els.searchInput.addEventListener('input', event => {
+  setQuery(event.target.value);
+});
+
+/* ─── Grouped / flat toggle ─── */
+els.groupToggle.addEventListener('click', event => {
+  const button = event.target.closest('.segment__btn');
+  if (!button) return;
+  setMode(button.dataset.mode);
+});
+
+/* ─── Expand / collapse all ─── */
+els.expandBtn.addEventListener('click', () => {
+  expandAll(getCurrentGroupKeys());
+});
+
+els.collapseBtn.addEventListener('click', collapseAll);
+
+/* ─── Keyboard shortcuts ─── */
+document.addEventListener('keydown', event => {
+  const isInput = document.activeElement && document.activeElement.tagName === 'INPUT';
+
+  if (event.key === '/' && !isInput) {
+    event.preventDefault();
+    els.searchInput.focus();
+    return;
+  }
+
+  if (event.key === 'Escape' && document.activeElement === els.searchInput) {
+    els.searchInput.value = '';
+    setQuery('');
+    els.searchInput.blur();
+  }
+});
+
+/* ─── Drag & drop anywhere on the page ─── */
+let dragDepth = 0;
+
+window.addEventListener('dragenter', event => {
+  if (!event.dataTransfer || !event.dataTransfer.types.includes('Files')) return;
+  dragDepth++;
+  els.dragOverlay.classList.add('is-open');
+});
+
+window.addEventListener('dragleave', () => {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) els.dragOverlay.classList.remove('is-open');
+});
+
+window.addEventListener('dragover', event => event.preventDefault());
+
+window.addEventListener('drop', async event => {
+  event.preventDefault();
+  dragDepth = 0;
+  els.dragOverlay.classList.remove('is-open');
+  if (event.dataTransfer && event.dataTransfer.files.length) {
+    await loadFiles(event.dataTransfer.files);
+  }
+});
+
+/* ─── First render ─── */
+render();
+})();
+  </script>
+</body>
+</html>
